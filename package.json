@@ -1,0 +1,13 @@
+{
+  "name": "ns.s-agent-chat",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev": "node packages/watcher/src/index.js",
+    "start": "node packages/watcher/src/index.js",
+    "init": "node packages/cli/src/index.js init"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

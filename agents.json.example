@@ -1,0 +1,5 @@
+[
+  { "name": "frontend",  "mention": "@frontend",  "cwd": "/path/to/frontend" },
+  { "name": "backend",   "mention": "@backend",   "cwd": "/path/to/backend" },
+  { "name": "auth",      "mention": "@auth",      "cwd": "/path/to/auth" }
+]
