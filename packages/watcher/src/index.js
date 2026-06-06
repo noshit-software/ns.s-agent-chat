@@ -1,7 +1,16 @@
 import 'dotenv/config'
-import { execFile } from 'child_process'
+import { spawn } from 'child_process'
 import { readFileSync, writeFileSync, existsSync } from 'fs'
-import { resolve } from 'path'
+import { resolve, dirname, join } from 'path'
+
+// Convert MSYS/Git Bash paths (/d/foo) to Windows paths (D:\foo) for child_process cwd
+function toNativePath(p) {
+  return p.replace(/^\/([a-zA-Z])\//, '$1:/').replace(/\//g, '\\')
+}
+
+// Invoke claude CLI directly via node — avoids shell quoting issues with complex prompts
+const NODE = process.execPath
+const CLAUDE_CLI = join(dirname(NODE), 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js')
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID
@@ -41,17 +50,18 @@ function buildHistory() {
 
 function buildPrompt(agent, messageText, history) {
   return `You are the ${agent.name} agent in a multi-agent platform chat.
-Your domain is the codebase at ${agent.cwd}. Stay in your lane.
+Your domain is the codebase at ${agent.cwd}.
+
+You must respond with ONLY valid JSON in this exact format — no other text, no markdown, no explanation:
+{"post": true, "message": "your response here"}
+or
+{"post": false}
 
 Rules:
-- Read the recent message history below before deciding anything.
-- If this message is not relevant to your domain, exit silently — output nothing, post nothing.
-- If the message has already been answered adequately by another agent in history, do not pile on — exit silently.
-- Be concise. This is a chat, not a doc. Max 3-4 sentences unless detail is explicitly requested.
-- Use @mentions to address specific agents or @human when you need the human.
-- If you are blocked and cannot resolve, say so clearly and @human.
-- Never re-summarize what was already said. Just respond.
-- If you have something to say, post it to the Telegram channel using: relay.post(body)
+- Set "post" to false if this message is not relevant to your domain, or if another agent already answered adequately.
+- Set "post" to true only if you have something genuinely useful to contribute.
+- When posting: be concise (max 3-4 sentences), use @mentions when addressing someone.
+- If blocked, post and @human.
 
 Recent history:
 ${history || '(none yet)'}
@@ -60,17 +70,51 @@ New message:
 ${messageText}`
 }
 
+async function postToTelegram(text) {
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: CHAT_ID, text })
+  })
+}
+
 function dispatchAgent(agent, prompt) {
   return new Promise((resolve) => {
-    execFile(
-      'claude',
-      ['-p', prompt, '--allowedTools', 'mcp__agent-chat-relay__post,mcp__agent-chat-relay__history,mcp__agent-chat-relay__agents'],
-      { cwd: agent.cwd, env: { ...process.env, AGENT_NAME: agent.name } },
-      (err) => {
-        if (err?.code) console.error(`[${agent.name}] exited with code ${err.code}`)
-        resolve()
+    const chunks = []
+    const errChunks = []
+    const { CLAUDECODE, CLAUDE_CODE_SESSION_ID, CLAUDE_CODE_ENTRYPOINT, ...baseEnv } = process.env
+    const proc = spawn(NODE, [CLAUDE_CLI, '--print'], {
+      cwd: toNativePath(agent.cwd),
+      env: { ...baseEnv, AGENT_NAME: agent.name }
+    })
+    proc.stdin.write(prompt)
+    proc.stdin.end()
+    proc.on('error', (err) => { console.error(`[${agent.name}] spawn error:`, err.message); resolve() })
+    proc.stdout.on('data', chunk => chunks.push(chunk))
+    proc.stderr.on('data', chunk => errChunks.push(chunk))
+    proc.on('close', async (code) => {
+      if (code && code !== 0) {
+        const errOut = Buffer.concat(errChunks).toString().trim()
+        console.error(`[${agent.name}] exited with code ${code}${errOut ? ': ' + errOut.slice(0, 200) : ''}`)
       }
-    )
+      const raw = Buffer.concat(chunks).toString().trim()
+      let message = null
+      const jsonMatch = raw.match(/\{[^{}]*"post"\s*:[^{}]*\}/s)
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[0])
+          if (parsed.post === true && parsed.message) message = parsed.message
+        } catch { /* malformed — stay silent */ }
+      } else if (raw) {
+        message = raw
+      }
+      if (message) {
+        await postToTelegram(`[${agent.name}]: ${message}`)
+        recentMessages.push({ from: agent.name, text: message })
+        if (recentMessages.length > 50) recentMessages.shift()
+      }
+      resolve()
+    })
   })
 }
 
@@ -97,7 +141,7 @@ async function poll() {
 
     writeFileSync(STATE_FILE, JSON.stringify(state))
   } catch (err) {
-    console.error('[watcher] poll error:', err.message)
+    console.error('[watcher] poll error:', err.message, err.cause?.message ?? '', err.cause?.code ?? '')
   }
 }
 

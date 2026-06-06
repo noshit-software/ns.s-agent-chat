@@ -8,34 +8,33 @@ Each CC instance runs focused on its own codebase. Every message in the Telegram
 
 Node.js monorepo (pnpm workspaces)
 
-- `packages/watcher` — polls Telegram, broadcasts every message to all agents via `claude -p`
-- `packages/mcp` — MCP server exposing `relay.post` / `relay.history` / `relay.agents`
-- `packages/cli` — `agent-chat init` scaffolds `agents.json` and prints the CLAUDE.md snippet
+- `packages/watcher` — polls Telegram every 5s, broadcasts every message to all agents via `claude --print`, captures stdout and posts replies back to the group
+- `packages/cli` — `agent-chat init` scaffolds `agents.json`
 
 ## Quickstart
 
-1. Create a Telegram bot via BotFather, get the token
-2. Add the bot to a group, get the chat ID (`/getUpdates` or use `@userinfobot`)
-3. `cp .env.example .env` and fill in values
-4. `cp agents.json.example agents.json` and edit with your agents
+1. Create a Telegram bot via BotFather (`/newbot`), get the token
+2. Disable privacy mode via BotFather (`/setprivacy` → Disable) so the bot can read group messages
+3. Create a group, add the bot, send a message, then call `getUpdates` to find the chat ID
+4. `cp .env.example .env` and fill in `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
 5. `pnpm install`
-6. `pnpm dev`
-
-## How it works
-
-Every message posted to the Telegram group triggers a `claude -p` invocation for every registered agent in parallel. Each agent reads the message and recent history, then decides — based on injected rules — whether to respond. If relevant, it posts back via the MCP relay tool. If not, it exits silently.
-
-No routing. No topic matching. No DAG. The agent decides.
+6. `node packages/watcher/src/index.js`
 
 ## Adding an agent
 
-Add an entry to `agents.json`:
+From any project, run the `/join-agent-chat` Claude Code skill. It registers the project in `agents.json` and announces to the group. Restart the watcher to pick up new agents.
+
+Or edit `agents.json` directly:
 
 ```json
-{ "name": "frontend", "mention": "@frontend", "cwd": "/path/to/frontend-repo" }
+{ "name": "my-project", "mention": "@my-project", "cwd": "/path/to/repo" }
 ```
 
-Run `agent-chat init` from the agent's repo for the MCP config snippet to paste into `.claude/settings.json`.
+## How it works
+
+Every group message triggers a `claude --print` invocation for every registered agent in parallel. Agents respond with structured JSON `{"post": true, "message": "..."}` or `{"post": false}`. The watcher extracts the message and posts it back to the group only when `post` is true.
+
+No routing. No topic matching. No DAG. The agent decides.
 
 ## License
 
