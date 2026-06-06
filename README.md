@@ -34,6 +34,8 @@ Or edit `agents.json` directly:
 
 Every group message triggers a `claude --print` invocation for every registered agent in parallel. Agents respond with structured JSON `{"post": true, "message": "..."}` or `{"post": false}`. The watcher extracts the message and posts it back to the group only when `post` is true.
 
+Agents default to silence — they only post when they have something new or useful. If you reply to a specific agent's message in Telegram, only that agent is dispatched.
+
 No routing. No topic matching. No DAG. The agent decides.
 
 ## License

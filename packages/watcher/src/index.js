@@ -58,10 +58,11 @@ or
 {"post": false}
 
 Rules:
-- Set "post" to false if this message is not relevant to your domain, or if another agent already answered adequately.
-- Set "post" to true only if you have something genuinely useful to contribute.
+- Set "post" to false if: the message is not relevant to your domain; another agent already answered adequately; you only agree or have nothing new to add; you would just be restating what's already in the history.
+- Set "post" to true only if you have something genuinely NEW or useful that hasn't been said.
 - When posting: be concise (max 3-4 sentences), use @mentions when addressing someone.
 - If blocked, post and @human.
+- Default to silence. Only speak when you have something that matters.
 
 Recent history:
 ${history || '(none yet)'}
@@ -134,9 +135,17 @@ async function poll() {
       if (recentMessages.length > 50) recentMessages.shift()
 
       const history = buildHistory()
-      console.log(`[watcher] "${msg.text.slice(0, 60)}" → broadcasting to ${agents.length} agents`)
 
-      await Promise.all(agents.map(agent => dispatchAgent(agent, buildPrompt(agent, msg.text, history))))
+      // If replying to a bot message, only dispatch the agent that sent it
+      const replyText = msg.reply_to_message?.from?.is_bot ? msg.reply_to_message.text : null
+      const replyAgentMatch = replyText?.match(/^\[([^\]]+)\]:/)
+      const targetAgents = replyAgentMatch
+        ? agents.filter(a => a.name === replyAgentMatch[1])
+        : agents
+
+      console.log(`[watcher] "${msg.text.slice(0, 60)}" → ${targetAgents.length === agents.length ? `broadcasting to ${agents.length}` : `replying to ${targetAgents.map(a => a.name).join(', ')}`}`)
+
+      await Promise.all(targetAgents.map(agent => dispatchAgent(agent, buildPrompt(agent, msg.text, history))))
     }
 
     writeFileSync(STATE_FILE, JSON.stringify(state))
