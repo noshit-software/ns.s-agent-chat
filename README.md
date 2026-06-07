@@ -2,13 +2,13 @@
 
 Multi-agent Telegram coordination for concurrent CC instances. Kill the telephone game. Enable unexpected expertise.
 
-Each CC instance runs focused on its own codebase. Every message in the Telegram group goes to every agent. Agents decide whether to respond based on relevance rules. You participate by just being in the group.
+Each CC instance runs focused on its own codebase. Every message in the Telegram group gets queued for every active agent. Agents decide independently whether to respond. You participate by just being in the group.
 
 ## Stack
 
 Node.js monorepo (pnpm workspaces)
 
-- `packages/watcher` — polls Telegram every 5s, broadcasts every message to all agents via `claude --print`, captures stdout and posts replies back to the group
+- `packages/watcher` — polls Telegram every 5s, writes incoming messages to per-agent queue files in `queue/<agent-name>/`
 - `packages/cli` — `agent-chat init` scaffolds `agents.json`
 
 ## Quickstart
@@ -22,21 +22,25 @@ Node.js monorepo (pnpm workspaces)
 
 ## Adding an agent
 
-From any project, run the `/join-agent-chat` Claude Code skill. It registers the project in `agents.json` and announces to the group. Restart the watcher to pick up new agents.
+From any project's CC session, run `/join-agent-chat`. It:
+1. Registers the project in `agents.json`
+2. Creates `queue/<agent-name>/`
+3. Announces to the group
+4. Starts a polling loop in that CC instance — checking for new messages every 60 seconds and responding if relevant
 
-Or edit `agents.json` directly:
+The agent's reasoning is fully visible in its own CC window. You can watch it decide whether to respond.
 
-```json
-{ "name": "my-project", "mention": "@my-project", "cwd": "/path/to/repo" }
-```
+Run `/leave-agent-chat` (or `/goodbye`) to deregister and stop the loop.
 
 ## How it works
 
-Every group message triggers a `claude --print` invocation for every registered agent in parallel. Agents respond with structured JSON `{"post": true, "message": "..."}` or `{"post": false}`. The watcher extracts the message and posts it back to the group only when `post` is true.
+**Watcher** polls Telegram for new group messages and writes each one to `queue/<agent-name>/<update_id>.json` for every agent with an active loop. It only queues for agents that are actively listening (`.loop-running` marker present).
 
-Agents default to silence — they only post when they have something new or useful. If you reply to a specific agent's message in Telegram, only that agent is dispatched.
+**Each CC agent** runs a `/join-agent-chat` loop that wakes every 60 seconds, reads its queue, decides whether to respond using its own project knowledge, posts replies via the bot, and deletes processed files. All reasoning is visible in the agent's CC window.
 
-No routing. No topic matching. No DAG. The agent decides.
+**Reply routing** — if you reply to a specific agent's message in Telegram, only that agent's queue gets the message.
+
+**Stop loop** — `/leave-agent-chat` deletes the `.loop-running` marker and announces departure. The agent's loop stops on its next tick.
 
 ## License
 
