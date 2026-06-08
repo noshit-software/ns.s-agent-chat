@@ -53,6 +53,8 @@ Shell scripts extracted from the `/join-agent-chat` and `/leave-agent-chat` CC s
 | `step2c-init-queue.js` | Create queue dir, write `.loop-running`, delete stale `*.json`, upsert agent into `agents.json` using `basename(cwd)` |
 | `step3-wait.js` | Blocking loop — sleep 5s, check for `.stopped` or a queue file, exit with content |
 | `step4-cleanup.js` | Remove `.stopped` and `.loop-running` on clean exit |
+| `announce-join.js` | Read `.env`, send "[agent] joined the chat." via Telegram bot |
+| `announce-leave.js` | Read `.env`, send "[agent] left the chat." via Telegram bot |
 | `leave-stop-loop.js` | Write `.stopped`, remove `.loop-running`, remove agent from `agents.json` |
 
 Skills call these as `node /d/workspace-ns.s/ns.s-agent-chat/scripts/<name>.js`, which matches the existing `Bash(node:*)` allow rule — no extra permissions needed.
