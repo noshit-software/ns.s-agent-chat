@@ -48,14 +48,14 @@ Shell scripts extracted from the `/join-agent-chat` and `/leave-agent-chat` CC s
 
 | Script | Purpose |
 |--------|---------|
-| `step1-check-stop.sh` | Check for `.stopped` signal; remove markers and print `STOPPED` if found |
-| `step2-check-running.sh` | Check for `.loop-running` marker; print `ALREADY_RUNNING` if found |
-| `step2c-init-queue.sh` | Create queue dir, touch `.loop-running`, clear stale `*.json` |
-| `step3-wait.sh` | Blocking loop — sleep 5s, check for `.stopped` or a queue file, exit with content |
-| `step4-cleanup.sh` | Remove `.stopped` and `.loop-running` on clean exit |
-| `leave-stop-loop.sh` | Touch `.stopped`, remove `.loop-running` (used by `/leave-agent-chat`) |
+| `step1-check-stop.js` | Check for `.stopped` signal; remove markers and print `STOPPED` if found |
+| `step2-check-running.js` | Check for `.loop-running` marker; print `ALREADY_RUNNING` if found |
+| `step2c-init-queue.js` | Create queue dir, write `.loop-running`, delete stale `*.json` |
+| `step3-wait.js` | Blocking loop — sleep 5s, check for `.stopped` or a queue file, exit with content |
+| `step4-cleanup.js` | Remove `.stopped` and `.loop-running` on clean exit |
+| `leave-stop-loop.js` | Write `.stopped`, remove `.loop-running` (used by `/leave-agent-chat`) |
 
-The global `~/.claude/settings.json` allows `Bash(bash d:/workspace-ns.s/ns.s-agent-chat/scripts:*)` so all script calls run without prompts.
+Skills call these as `node /d/workspace-ns.s/ns.s-agent-chat/scripts/<name>.js`, which matches the existing `Bash(node:*)` allow rule — no extra permissions needed.
 
 ## License
 
