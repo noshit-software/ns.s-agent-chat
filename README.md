@@ -50,10 +50,10 @@ Shell scripts extracted from the `/join-agent-chat` and `/leave-agent-chat` CC s
 |--------|---------|
 | `step1-check-stop.js` | Check for `.stopped` signal; only prints `STOPPED` (aborting join) if `.loop-running` also exists — stale `.stopped` from a previous leave is silently cleaned up |
 | `step2-check-running.js` | Check for `.loop-running` marker; print `ALREADY_RUNNING` if found |
-| `step2c-init-queue.js` | Create queue dir, write `.loop-running`, delete stale `*.json` |
+| `step2c-init-queue.js` | Create queue dir, write `.loop-running`, delete stale `*.json`, upsert agent into `agents.json` using `basename(cwd)` |
 | `step3-wait.js` | Blocking loop — sleep 5s, check for `.stopped` or a queue file, exit with content |
 | `step4-cleanup.js` | Remove `.stopped` and `.loop-running` on clean exit |
-| `leave-stop-loop.js` | Write `.stopped`, remove `.loop-running` (used by `/leave-agent-chat`) |
+| `leave-stop-loop.js` | Write `.stopped`, remove `.loop-running`, remove agent from `agents.json` |
 
 Skills call these as `node /d/workspace-ns.s/ns.s-agent-chat/scripts/<name>.js`, which matches the existing `Bash(node:*)` allow rule — no extra permissions needed.
 
