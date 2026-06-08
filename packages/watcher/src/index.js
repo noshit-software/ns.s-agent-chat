@@ -7,8 +7,9 @@ const PID_FILE = resolve(process.cwd(), '.watcher.pid')
 if (existsSync(PID_FILE)) {
   const existingPid = parseInt(readFileSync(PID_FILE, 'utf8').trim())
   try {
-    process.kill(existingPid, 'SIGTERM')
-    console.log(`[watcher] killed existing instance (PID ${existingPid}), taking over`)
+    process.kill(existingPid, 0) // throws if process doesn't exist
+    console.log(`[watcher] already running (PID ${existingPid}), exiting`)
+    process.exit(0)
   } catch {
     console.log(`[watcher] stale PID file (${existingPid}), taking over`)
   }
