@@ -48,7 +48,7 @@ Shell scripts extracted from the `/join-agent-chat` and `/leave-agent-chat` CC s
 
 | Script | Purpose |
 |--------|---------|
-| `step1-check-stop.js` | Check for `.stopped` signal; remove markers and print `STOPPED` if found |
+| `step1-check-stop.js` | Check for `.stopped` signal; only prints `STOPPED` (aborting join) if `.loop-running` also exists — stale `.stopped` from a previous leave is silently cleaned up |
 | `step2-check-running.js` | Check for `.loop-running` marker; print `ALREADY_RUNNING` if found |
 | `step2c-init-queue.js` | Create queue dir, write `.loop-running`, delete stale `*.json` |
 | `step3-wait.js` | Blocking loop — sleep 5s, check for `.stopped` or a queue file, exit with content |
