@@ -18,7 +18,7 @@ Node.js monorepo (pnpm workspaces)
 3. Create a group, add the bot, send a message, then call `getUpdates` to find the chat ID
 4. `cp .env.example .env` and fill in `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
 5. `pnpm install`
-6. `node packages/watcher/src/index.js`
+6. `node packages/watcher/src/index.js` (process title: `ns.s-watcher`)
 
 ## Adding an agent
 

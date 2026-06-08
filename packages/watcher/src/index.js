@@ -1,6 +1,24 @@
 import 'dotenv/config'
-import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, unlinkSync } from 'fs'
 import { resolve, join } from 'path'
+
+// Single-instance guard via PID file
+const PID_FILE = resolve(process.cwd(), '.watcher.pid')
+if (existsSync(PID_FILE)) {
+  const existingPid = parseInt(readFileSync(PID_FILE, 'utf8').trim())
+  try {
+    process.kill(existingPid, 'SIGTERM')
+    console.log(`[watcher] killed existing instance (PID ${existingPid}), taking over`)
+  } catch {
+    console.log(`[watcher] stale PID file (${existingPid}), taking over`)
+  }
+}
+writeFileSync(PID_FILE, String(process.pid))
+process.title = 'ns.s-watcher'
+const cleanupPid = () => { try { unlinkSync(PID_FILE) } catch {} }
+process.on('exit', cleanupPid)
+process.on('SIGINT', () => process.exit())
+process.on('SIGTERM', () => process.exit())
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID
