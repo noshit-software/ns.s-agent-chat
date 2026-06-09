@@ -1,12 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 
+const agentsFile = 'd:/workspace-ns.s/ns.s-agent-chat/agents.json';
+const agent = path.basename(process.cwd());
+
+try {
+  const agents = JSON.parse(fs.readFileSync(agentsFile, 'utf8'));
+  if (!agents.some(a => a.name === agent)) process.exit(0);
+} catch { process.exit(0); }
+
 const env = Object.fromEntries(
   fs.readFileSync('d:/workspace-ns.s/ns.s-agent-chat/.env', 'utf8')
     .split('\n').filter(l => l.includes('=') && !l.startsWith('#'))
     .map(l => { const i = l.indexOf('='); return [l.slice(0,i).trim(), l.slice(i+1).trim()]; })
 );
-const agent = path.basename(process.cwd());
 
 fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
   method: 'POST',
